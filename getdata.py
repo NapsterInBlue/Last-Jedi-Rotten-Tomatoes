@@ -1,5 +1,5 @@
 from operator import add
-
+import pickle
 import requests
 
 from bs4 import BeautifulSoup
@@ -25,9 +25,34 @@ def get_stars_per_review(reviews):
     totalStars = list(map(add, [stars(x) for x in reviews], halves))
     return totalStars
 
-for i in range(1,4):
-    html = requests.get(BASEPAGE.format(str(i))).text
-    soup = BeautifulSoup(html, 'lxml')
-    reviews = get_reviews_on_page(soup)
-    stars = get_stars_per_review(reviews)
-    print(stars)
+def get_comments_per_review(reviews):
+    allComments = []
+    for review in reviews:
+        try:
+            comment = review.find_all('div')[4].text.split('  ')[2]
+        except:
+            comment = ''
+        allComments.append(comment)
+
+    return allComments
+
+
+def get_all_of_the_data(numPages):
+    allStars = []
+    allComments = []
+    for i in range(1, numPages):
+        html = requests.get(BASEPAGE.format(str(i))).text
+        soup = BeautifulSoup(html, 'lxml')
+        reviews = get_reviews_on_page(soup)
+        if len(reviews) == 0:
+            print('Stopped being able to see pages on loop {}'.format(i))
+            break
+        allStars.extend(get_stars_per_review(reviews))
+        allComments.extend(get_comments_per_review(reviews))
+    return list(zip(allStars, allComments))
+
+if __name__ == '__main__':
+    data = get_all_of_the_data(1000)
+    f = open('datadump.pkl', 'wb')
+    pickle.dump(data, f)
+    f.close()
